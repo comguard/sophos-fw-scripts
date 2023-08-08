@@ -47,6 +47,8 @@ def main():
                 networkpolicy = nat_rule.find("NetworkPolicy")
                 action = logtraffic = sourcezones = sourcenetworks = ""
                 destinationzones = destinationnetworks = services = ""
+                webfilter = applicationcontrol = ""
+                # scanvirus = zerodayprotection = intrusionprevention = ""
                 if not (networkpolicy is None):
                     if not (networkpolicy.find("Action") is None):
                         action = networkpolicy.find("Action").text
@@ -102,6 +104,10 @@ def main():
                             first = False
                     else:
                         services = "ANY"
+                    if not (networkpolicy.find("WebFilter") is None):
+                        webfilter = networkpolicy.find("WebFilter").text
+                    if not (networkpolicy.find("ApplicationControl") is None):
+                        applicationcontrol = networkpolicy.find("ApplicationControl").text
 
                 data_list.append({
                     "Name": name,
@@ -114,6 +120,8 @@ def main():
                     "DestinationZones": destinationzones,
                     "DestinationNetworks": destinationnetworks,
                     "Services": services,
+                    "WebFilter": webfilter,
+                    "ApplicationControl": applicationcontrol,
                 })
 
             # Convert the list of dictionaries to a DataFrame
