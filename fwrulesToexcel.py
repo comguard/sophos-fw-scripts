@@ -4,7 +4,7 @@ import pandas as pd
 
 # Replace these values with your actual firewall URL, username, and password
 fw = {
-   "firewallurl": "",
+   "firewallurl": "https://<fw-ip>:4444/webconsole/APIController",
     "username": "",
     "pwd": ""
 }
@@ -33,38 +33,87 @@ def main():
         if response.status_code == 200:
             # Parse the XML response
             root = ET.fromstring(response.text)
-            print(response.text)
+            # print(response.text)
 
             # Extract NATRule elements from the XML response
-            nat_rules = root.findall(".//NATRule")
+            nat_rules = root.findall(".//FirewallRule")
 
             # Extract data from each NATRule element and store it in a list of dictionaries
             data_list = []
             for nat_rule in nat_rules:
                 name = nat_rule.find("Name").text
                 description = nat_rule.find("Description").text
-                ip_family = nat_rule.find("IPFamily").text
                 status = nat_rule.find("Status").text
-                position = nat_rule.find("Position").text
-                linked_firewall_rule = nat_rule.find("LinkedFirewallrule").text
-                translated_destination = nat_rule.find("TranslatedDestination").text
-                translated_service = nat_rule.find("TranslatedService").text
-                outbound_interfaces = [interface.text for interface in nat_rule.findall("OutboundInterfaces/Interface")]
-                override_interface_nat_policy = nat_rule.find("OverrideInterfaceNATPolicy").text
-                translated_source = nat_rule.find("TranslatedSource").text
+                networkpolicy = nat_rule.find("NetworkPolicy")
+                action = logtraffic = sourcezones = sourcenetworks = ""
+                destinationzones = destinationnetworks = services = ""
+                if not (networkpolicy is None):
+                    if not (networkpolicy.find("Action") is None):
+                        action = networkpolicy.find("Action").text
+                    if not (networkpolicy.find("LogTraffic") is None):
+                        logtraffic = networkpolicy.find("LogTraffic").text
+                    if not (networkpolicy.find("SourceZones") is None):
+                        zones = networkpolicy.find("SourceZones").findall("Zone")
+                        first = True
+                        for zone in zones:
+                            if not first:
+                                sourcezones += ", "
+                            sourcezones += zone.text
+                            first = False
+                    else:
+                        sourcezones = "ANY"
+                    if not (networkpolicy.find("SourceNetworks") is None):
+                        networks = networkpolicy.find("SourceNetworks").findall("Network")
+                        first = True
+                        for network in networks:
+                            if not first:
+                                sourcenetworks += ", "
+                            sourcenetworks += network.text
+                            first = False
+                    else:
+                        sourcenetworks = "ANY"
+                    if not (networkpolicy.find("DestinationZones") is None):
+                        zones = networkpolicy.find("DestinationZones").findall("Zone")
+                        first = True
+                        for zone in zones:
+                            if not first:
+                                destinationzones += ", "
+                            destinationzones += zone.text
+                            first = False
+                    else:
+                        destinationzones = "ANY"
+                    if not (networkpolicy.find("DestinationNetworks") is None):
+                        networks = networkpolicy.find("DestinationNetworks").findall("Network")
+                        first = True
+                        for network in networks:
+                            if not first:
+                                destinationnetworks += ", "
+                            destinationnetworks += network.text
+                            first = False
+                    else:
+                        destinationnetworks = "ANY"
+                    if not (networkpolicy.find("Services") is None):
+                        serviceslist = networkpolicy.find("Services").findall("Service")
+                        first = True
+                        for service in serviceslist:
+                            if not first:
+                                services += ", "
+                            services += service.text
+                            first = False
+                    else:
+                        services = "ANY"
 
                 data_list.append({
                     "Name": name,
                     "Description": description,
-                    "IPFamily": ip_family,
                     "Status": status,
-                    "Position": position,
-                    "LinkedFirewallrule": linked_firewall_rule,
-                    "TranslatedDestination": translated_destination,
-                    "TranslatedService": translated_service,
-                    "OutboundInterfaces": ",".join(outbound_interfaces),
-                    "OverrideInterfaceNATPolicy": override_interface_nat_policy,
-                    "TranslatedSource": translated_source
+                    "Action": action,
+                    "LogTraffic": logtraffic,
+                    "SourceZones": sourcezones,
+                    "SourceNetworks": sourcenetworks,
+                    "DestinationZones": destinationzones,
+                    "DestinationNetworks": destinationnetworks,
+                    "Services": services,
                 })
 
             # Convert the list of dictionaries to a DataFrame
