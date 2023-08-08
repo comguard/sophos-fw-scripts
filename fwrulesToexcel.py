@@ -9,8 +9,8 @@ fw = {
     "pwd": ""
 }
 
-# Replace the placeholders in the XML payload with actual username and password
-xml_payload_template = """<Request>
+# Creates two XLM payload templates for FirewallRules and FirewallRuleGroups
+xml_payload_template_fwrules = """<Request>
     <Login>
         <Username>{username}</Username>
         <Password>{password}</Password>
@@ -21,13 +21,38 @@ xml_payload_template = """<Request>
     </Get>
 </Request>"""
 
+xml_payload_template_fwrulegroups = """<Request>
+    <Login>
+        <Username>{username}</Username>
+        <Password>{password}</Password>
+    </Login>
+    <Get>
+        <FirewallRuleGroup>
+        </FirewallRuleGroup>
+    </Get>
+</Request>"""
+
 def main():
     try:
-        # Replace placeholders in the XML payload template with actual username and password
-        xml_payload = xml_payload_template.format(username=fw["username"], password=fw["pwd"])
+        # Construct payload for fetching groups of firewall rules
+        xml_payload_fwrulegroups = xml_payload_template_fwrulegroups.format(username=fw["username"], password=fw["pwd"])
+        
+        # Make the HTTP POST request and save the response for later usage
+        response_groups = requests.post(fw["firewallurl"], data={"reqxml": xml_payload_fwrulegroups}, verify=False)
+        
+        # After processing fw_groups includes all rule groups with security policies 
+        fw_groups = ""
+        if response_groups.status_code == 200:
+            fw_groups_root = ET.fromstring(response_groups.text)
+            fw_groups = fw_groups_root.findall(".//FirewallRuleGroup")
+        else:
+            print(f"Failed to get the response. Status code: {response.status_code}")
+
+        # Construct payload for fetching firewall rules
+        xml_payload_fwrules = xml_payload_template_fwrules.format(username=fw["username"], password=fw["pwd"])
 
         # Make the HTTP POST request
-        response = requests.post(fw["firewallurl"], data={"reqxml": xml_payload}, verify=False)
+        response = requests.post(fw["firewallurl"], data={"reqxml": xml_payload_fwrules}, verify=False)
 
         # Check if the request was successful (status code 200)
         if response.status_code == 200:
@@ -35,16 +60,24 @@ def main():
             root = ET.fromstring(response.text)
             # print(response.text)
 
-            # Extract NATRule elements from the XML response
-            nat_rules = root.findall(".//FirewallRule")
+            # Extract FirewallRule elements from the XML response
+            fw_rules = root.findall(".//FirewallRule")
 
-            # Extract data from each NATRule element and store it in a list of dictionaries
+            # Extract data from each FirewallRule element and store it in a list of dictionaries
             data_list = []
-            for nat_rule in nat_rules:
-                name = nat_rule.find("Name").text
-                description = nat_rule.find("Description").text
-                status = nat_rule.find("Status").text
-                networkpolicy = nat_rule.find("NetworkPolicy")
+            for fw_rule in fw_rules:
+                name = fw_rule.find("Name").text
+
+                # Loop through firewall groups, and find the correct one
+                group = ""
+                for fw_group in fw_groups:
+                    for policy in fw_group.find("SecurityPolicyList").findall("SecurityPolicy"):
+                        if policy.text == name:
+                            group = fw_group.find("Name").text
+
+                description = fw_rule.find("Description").text
+                status = fw_rule.find("Status").text
+                networkpolicy = fw_rule.find("NetworkPolicy")
                 action = logtraffic = sourcezones = sourcenetworks = ""
                 destinationzones = destinationnetworks = services = ""
                 webfilter = applicationcontrol = ""
@@ -110,6 +143,7 @@ def main():
                         applicationcontrol = networkpolicy.find("ApplicationControl").text
 
                 data_list.append({
+                    "Group": group,
                     "Name": name,
                     "Description": description,
                     "Status": status,
