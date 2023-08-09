@@ -4,7 +4,7 @@ import pandas as pd
 
 # Replace these values with your actual firewall URL, username, and password
 fw = {
-   "firewallurl": "https://<fw-ip>:4444/webconsole/APIController",
+    "firewallurl": "https://<fw-ip>:4444/webconsole/APIController",
     "username": "",
     "pwd": ""
 }
@@ -81,7 +81,7 @@ def main():
                 action = logtraffic = sourcezones = sourcenetworks = ""
                 destinationzones = destinationnetworks = services = ""
                 webfilter = applicationcontrol = ""
-                # scanvirus = zerodayprotection = intrusionprevention = ""
+                scanvirus = zerodayprotection = intrusionprevention = ""
                 if not (networkpolicy is None):
                     if not (networkpolicy.find("Action") is None):
                         action = networkpolicy.find("Action").text
@@ -141,6 +141,12 @@ def main():
                         webfilter = networkpolicy.find("WebFilter").text
                     if not (networkpolicy.find("ApplicationControl") is None):
                         applicationcontrol = networkpolicy.find("ApplicationControl").text
+                    if not (networkpolicy.find("ScanVirus") is None):
+                        scanvirus = networkpolicy.find("ScanVirus").text
+                    if not (networkpolicy.find("ZeroDayProtection") is None):
+                        zerodayprotection = networkpolicy.find("ZeroDayProtection").text
+                    if not (networkpolicy.find("IntrusionPrevention") is None):
+                        intrusionprevention = networkpolicy.find("IntrusionPrevention").text
 
                 data_list.append({
                     "Group": group,
@@ -156,6 +162,9 @@ def main():
                     "Services": services,
                     "WebFilter": webfilter,
                     "ApplicationControl": applicationcontrol,
+                    "ScanVirus": scanvirus,
+                    "ZeroDayProtection": zerodayprotection,
+                    "IntrusionPrevention": intrusionprevention,
                 })
 
             # Convert the list of dictionaries to a DataFrame
